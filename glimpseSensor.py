@@ -3,6 +3,7 @@ import chainer
 from chainer import cuda
 from chainer import function
 from chainercv.transforms import resize
+from matplotlib import pyplot as plt
 
 
 class GlimpseSensor(function.Function):
@@ -23,14 +24,15 @@ class GlimpseSensor(function.Function):
 		size_o = self.output_size
 
 		# [-1, 1]^2 -> [0, size_i - 1]x[0, size_i - 1]
+
 		center = 0.5 * (self.center + 1) * (size_i - 1)  # center -> [n X 2]
 
 		y = xp.zeros(shape=(n, c*self.scale, size_o, size_o), dtype=np.float32)
 
-		xmin = xp.zeros(shape=(self.scale, n), dtype=np.float32)
-		ymin = xp.zeros(shape=(self.scale, n), dtype=np.float32)
-		xmax = xp.zeros(shape=(self.scale, n), dtype=np.float32)
-		ymax = xp.zeros(shape=(self.scale, n), dtype=np.float32)
+		xmin = xp.zeros(shape=(self.scale, n), dtype=np.int32)
+		ymin = xp.zeros(shape=(self.scale, n), dtype=np.int32)
+		xmax = xp.zeros(shape=(self.scale, n), dtype=np.int32)
+		ymax = xp.zeros(shape=(self.scale, n), dtype=np.int32)
 
 		for scale in range(self.scale):
 			xmin[scale] = xp.round(xp.clip(center[:, 0] - (0.5 * size_o * (scale+1)), 0, size_i - 1))
@@ -45,4 +47,3 @@ class GlimpseSensor(function.Function):
 				y[i][c*j: (c*j)+c] = resized
 
 		return y,
-
