@@ -1,9 +1,8 @@
 import numpy as np
-import chainer
 from chainer import cuda
 from chainer import function
 from chainercv.transforms import resize
-from matplotlib import pyplot as plt
+
 
 
 class GlimpseSensor(function.Function):
@@ -16,9 +15,9 @@ class GlimpseSensor(function.Function):
 		self.center = center
 		self.scale = scale
 
-	def forward(self, image):
-		xp = cuda.get_array_module(*image)
-		n, c, h_i, w_i = image.shape
+	def forward(self, images):
+		xp = cuda.get_array_module(*images)
+		n, c, h_i, w_i = images.shape
 		assert h_i == w_i, "Image should be square"
 		size_i = h_i
 		size_o = self.output_size
@@ -42,8 +41,19 @@ class GlimpseSensor(function.Function):
 
 		for i in range(n):
 			for j in range(self.scale):
-				cropped = image[i][:,xmin[j][i]:xmax[j][i]+1, ymin[j][i]:ymax[j][i]+1]
+				cropped = images[i][:,xmin[j][i]:xmax[j][i]+1, ymin[j][i]:ymax[j][i]+1]
 				resized = resize(cropped, (self.output_size, self.output_size))
 				y[i][c*j: (c*j)+c] = resized
 
 		return y,
+
+	def backward(self, images, gy):
+		#return zero grad
+		xp = cuda.get_array_module(*images)
+		n, c_out = gy[0].shape[:2]
+		c_in ,h_i, w_i = images.shape[1:4]
+		gx = xp.zeros(shape=(n, c_in, h_i, w_i), dtype=np.float32)
+		return gx,
+
+def getGlimpses(x, center, size, scale=1):
+	return GlimpseSensor(center, size, scale)(x)
