@@ -120,7 +120,6 @@ class RAM(chainer.Chain):
             reporter.report({'total_loss': self.loss}, self)
             reporter.report({'training_accuracy': self.accuracy}, self)
         #print(self.loss)
-        print(self.accuracy)
         return self.loss
 
 

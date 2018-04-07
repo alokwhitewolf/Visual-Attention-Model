@@ -56,8 +56,7 @@ if __name__ == '__main__':
     test_data = np.array(list(test_data)).reshape(test_data.shape[0], 1, 28, 28)
     train_targets = np.array(train_targets).astype(np.int32)
     test_targets = np.array(test_targets).astype(np.int32)
-
-    if args.eval is not None:
+    if args.evalm is not None:
         chainer.global_config.train = False
 
     model = RAM(args.hidden, args.unit, args.sigma,
@@ -90,4 +89,5 @@ if __name__ == '__main__':
                           marker=".")
     extensions.PlotReport(['cross_entropy_loss'], 'epoch', trigger=(1, 'epoch'), file_name='train_accuracy.png',
                           marker=".")
+    trainer.extend(extensions.ProgressBar((args.epoch,'epoch'),update_interval=5))
     trainer.run()
