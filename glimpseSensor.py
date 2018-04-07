@@ -3,10 +3,7 @@ import numpy as np
 from chainercv.transforms import resize
 from chainer import cuda
 from chainer import function
-
-
-
-
+import chainer.functions as F
 
 class GlimpseSensor(function.Function):
 	def __init__(self, center, output_size, using_conv = False, depth=1, scale=2):
@@ -22,13 +19,14 @@ class GlimpseSensor(function.Function):
 
 	def forward(self, images):
 		xp = cuda.get_array_module(*images)
+
 		n, c, h_i, w_i = images[0].shape
 		assert h_i == w_i, "Image should be square"
 		size_i = h_i
 		size_o = self.output_size
 
 		# [-1, 1]^2 -> [0, size_i - 1]x[0, size_i - 1]
-		center = 0.5 * (self.center + 1) * (size_i - 1)  # center:shape -> [n X 2]
+		center = (0.5 * (self.center + 1) * (size_i - 1)).data  # center:shape -> [n X 2]
 
 		y = xp.zeros(shape=(n, c*self.depth, size_o, size_o), dtype=np.float32)
 
@@ -38,7 +36,7 @@ class GlimpseSensor(function.Function):
 		ymax = xp.zeros(shape=(self.depth, n), dtype=np.int32)
 
 		for depth in range(self.depth):
-			xmin[depth] = xp.round(xp.clip(center[:, 0] - (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
+			xmin[depth] = xp.round(xp.clip(center[:, 0] - (0.5 * size_o * (xp.power(self.scale,depth))), 0., float(size_i - 1)))
 			ymin[depth] = xp.round(xp.clip(center[:, 1] - (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
 			xmax[depth] = xp.round(xp.clip(center[:, 0] + (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
 			ymax[depth] = xp.round(xp.clip(center[:, 1] + (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
