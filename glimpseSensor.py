@@ -6,7 +6,7 @@ from chainer import function
 import chainer.functions as F
 
 class GlimpseSensor(function.Function):
-	def __init__(self, center, output_size, using_conv = False, depth=1, scale=2):
+	def __init__(self, center, output_size,depth=1, scale=2, using_conv = False, ):
 		if type(output_size) is not tuple:
 			self.output_size = output_size
 		else:
@@ -60,7 +60,7 @@ class GlimpseSensor(function.Function):
 		return gx,
 
 
-def getGlimpses(x, center, size, depth=1, scale=2):
+def getGlimpses(x, center, size, depth=1, scale=2, using_conv = False):
 	return GlimpseSensor(center, size, depth, scale)(x)
 
 
