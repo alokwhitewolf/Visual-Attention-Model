@@ -4,12 +4,12 @@ import chainer.functions as F
 import chainer.links as L
 import numpy as np
 from glimpseSensor import getGlimpses
+from chainer import reporter
 
 
 class RAM(chainer.Chain):
-    def __init__(self, n_hidden = 256, n_units = 128, n_class = 10, sigma = 0.03,
-                 g_size=8, n_steps=6, n_depth=1, n_scale = 2,
-                 coeff = 1.0, coeffb = 1.0, using_conv = False):
+    def __init__(self, n_hidden = 256, n_units = 128, sigma = 0.03,
+                 g_size=8, n_steps=6, n_depth=1, n_scale = 2, n_class = 10, using_conv = False):
 
         n_in = g_size * g_size * n_depth
         super(RAM, self).__init__(
@@ -27,23 +27,18 @@ class RAM(chainer.Chain):
         self.n_scale = n_scale
         self.sigma = sigma
         self.n_steps = n_steps
-        self.coeff = coeff
-        self.coeffb = coeffb
         self.using_conv = using_conv
-
 
     def reset_state(self):
         self.lstm.reset_state()
 
-
     def get_location_loss(self, l, mean):
         if chainer.config.train:
             term1 = 0.5 * (l - mean) ** 2 * self.sigma ** -2
-            return F.sum(term1, axis=1)
+            return F.sum(term1, axis=1).reshape(-1,1)
         else:
             xp = cuda.get_array_module(l)
             return Variable(xp.zeros(l.shape[0]))
-
 
     def sample_location(self, l):
         """
@@ -64,13 +59,10 @@ class RAM(chainer.Chain):
             centers = self.sample_location(l)
             ln_pi = self.get_location_loss(centers, l)
 
+
         else:
             centers = l
             ln_pi = self.get_location_loss(l, l) # ==0's
-
-
-
-
         rho = getGlimpses(x, centers, self.g_size, self.n_depth, self.n_scale, self.using_conv)
 
         g0 = F.relu(self.ll1(centers))
@@ -79,7 +71,6 @@ class RAM(chainer.Chain):
         h1 = F.relu(self.lh1(h0))
         h2 = F.relu(self.lh2(h1))
         h_out = self.lstm(h2)
-        #self.h_out = h_out
         y = self.ly(h_out)
         l_out = F.tanh(self.ll(h_out))
         b = F.sigmoid(self.lb(h_out))
@@ -91,27 +82,28 @@ class RAM(chainer.Chain):
 
         x = chainer.Variable(self.xp.asarray(x))
         t = chainer.Variable(self.xp.asarray(t))
-
+        #print(x.shape)
+        #print(t.shape)
         batchsize = x.data.shape[0]
         self.reset_state()
 
-        #initial l
+        # initial l
         l = np.random.uniform(-1, 1, size=(batchsize, 2)).astype(np.float32)
         l = chainer.Variable(self.xp.asarray(l))
 
-        sum_ln_pi = Variable(self.xp.zeros(batchsize))
+        sum_ln_pi = Variable((self.xp.zeros((batchsize,1))))
         sum_ln_pi = F.cast(sum_ln_pi,'float32')
         l, ln_pi, y, b = self.forward(x, l, first=True)
         for i in range(1,self.n_steps):
             l, ln_pi, y, b = self.forward(x, l)
             sum_ln_pi += ln_pi
-
         self.loss_action = F.softmax_cross_entropy(y, t)
         self.loss = self.loss_action
         self.accuracy = F.accuracy(y, t)
+        reporter.report({'accuracy': self.accuracy}, self)
+        self.y = F.argmax(y, axis=1)
+        if chainer.global_config.train:
 
-        if train:
-            # reward
             conditions = self.xp.argmax(y.data, axis=1) == t.data
             r = self.xp.where(conditions, 1., 0.).astype(self.xp.float32)
             r = self.xp.expand_dims(r, 1)
@@ -120,16 +112,16 @@ class RAM(chainer.Chain):
             self.loss += self.loss_baseline
             # loss with reinforce rule
             mean_ln_pi = sum_ln_pi / (self.n_steps - 1)
-            mean_ln_pi = self.xp.expand_dims(mean_ln_pi, 1)
-
-            self.reinforce_loss = F.sum(-mean_ln_pi * (r - b)) / batchsize
+            a = F.sum(-mean_ln_pi * (r - b)) / batchsize
+            self.reinforce_loss = F.sum(-mean_ln_pi * (r-b)) / batchsize
             self.loss += self.reinforce_loss
-
+            reporter.report({'cross_entropy_loss': self.loss_action}, self)
+            reporter.report({'reinforce_loss': self.reinforce_loss}, self)
+            reporter.report({'total_loss': self.loss}, self)
+            reporter.report({'training_accuracy': self.accuracy}, self)
+        #print(self.loss)
+        print(self.accuracy)
         return self.loss
-
-
-
-
 
 
 if __name__ == "__main__":
@@ -139,10 +131,6 @@ if __name__ == "__main__":
     train_targets = np.array(train_targets).astype(np.int32)
     x = train_data[0:2]
     t = train_targets[0:2]
-
-
     model = RAM()
     model.to_gpu()
     model(x, t)
-
-

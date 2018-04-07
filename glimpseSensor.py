@@ -1,9 +1,5 @@
-
-
-from chainercv.transforms import resize
 from chainer import cuda
 from chainer import function
-import chainer.functions as F
 import numpy as np
 
 
