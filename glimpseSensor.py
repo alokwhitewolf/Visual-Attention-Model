@@ -1,9 +1,11 @@
 
-import numpy as np
+
 from chainercv.transforms import resize
 from chainer import cuda
 from chainer import function
 import chainer.functions as F
+import numpy as np
+
 
 class GlimpseSensor(function.Function):
 	def __init__(self, center, output_size,depth=1, scale=2, using_conv = False, ):
@@ -26,26 +28,35 @@ class GlimpseSensor(function.Function):
 		size_o = self.output_size
 
 		# [-1, 1]^2 -> [0, size_i - 1]x[0, size_i - 1]
-		center = (0.5 * (self.center + 1) * (size_i - 1)).data  # center:shape -> [n X 2]
+		center = (0.5 * (self.center + 1) * (size_i - 1)).data # center:shape -> [n X 2]
+		y = xp.zeros(shape=(n, c*self.depth, size_o, size_o), dtype=xp.float32)
 
-		y = xp.zeros(shape=(n, c*self.depth, size_o, size_o), dtype=np.float32)
+		xmin = xp.zeros(shape=(self.depth, n), dtype=xp.int32)
+		ymin = xp.zeros(shape=(self.depth, n), dtype=xp.int32)
+		xmax = xp.zeros(shape=(self.depth, n), dtype=xp.int32)
+		ymax = xp.zeros(shape=(self.depth, n), dtype=xp.int32)
 
-		xmin = xp.zeros(shape=(self.depth, n), dtype=np.int32)
-		ymin = xp.zeros(shape=(self.depth, n), dtype=np.int32)
-		xmax = xp.zeros(shape=(self.depth, n), dtype=np.int32)
-		ymax = xp.zeros(shape=(self.depth, n), dtype=np.int32)
+		xstart = xp.zeros(shape=(self.depth, n), dtype=xp.int32)
+		ystart = xp.zeros(shape=(self.depth, n), dtype=xp.int32)
+
 
 		for depth in range(self.depth):
-			xmin[depth] = xp.round(xp.clip(center[:, 0] - (0.5 * size_o * (xp.power(self.scale,depth))), 0., float(size_i - 1)))
-			ymin[depth] = xp.round(xp.clip(center[:, 1] - (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
-			xmax[depth] = xp.round(xp.clip(center[:, 0] + (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
-			ymax[depth] = xp.round(xp.clip(center[:, 1] + (0.5 * size_o * (xp.power(self.scale,depth))), 0, size_i - 1))
+			xmin[depth] = xp.clip(xp.rint(center[:, 0]) - (0.5 * size_o * (np.power(self.scale,depth))), 0., size_i).astype(xp.int32)
+			ymin[depth] = xp.clip(xp.rint(center[:, 1]) - (0.5 * size_o * (np.power(self.scale,depth))), 0., size_i).astype(xp.int32)
+			xmax[depth] = xp.clip(xp.rint(center[:, 0]) + (0.5 * size_o * (np.power(self.scale,depth))), 0., size_i).astype(xp.int32)
+			ymax[depth] = xp.clip(xp.rint(center[:, 1]) + (0.5 * size_o * (xp.power(self.scale,depth))), 0., size_i).astype(xp.int32)
+
+			xstart[depth] = xmin[depth] - (xp.rint(center[:, 0]) - (0.5 * size_o * (np.power(self.scale,depth))))
+			ystart[depth] = ymin[depth] - (xp.rint(center[:, 1]) - (0.5 * size_o * (np.power(self.scale,depth))))
 
 		for i in range(n):
 			for j in range(self.depth):
-				cropped = images[0][i][:,xmin[j][i]:xmax[j][i]+1, ymin[j][i]:ymax[j][i]+1]
-				resized = resize(cropped, (self.output_size, self.output_size))
-				y[i][c*j: (c*j)+c] = resized
+
+				cropped = images[0][i][:,xmin[j][i]:xmax[j][i], ymin[j][i]:ymax[j][i]]
+				# TODO: resize images
+
+				y[i][c*j: (c*j)+c, xstart[j][i]: xstart[j][i] + xmax[j][i] - xmin[j][i] ,
+								   ystart[j][i]: ystart[j][i] + ymax[j][i] - ymin[j][i]] += cropped
 
 		if self.using_conv:
 			return y,
@@ -56,7 +67,7 @@ class GlimpseSensor(function.Function):
 		#return zero grad
 		xp = cuda.get_array_module(*images)
 		n, c_in ,h_i, w_i = images[0].shape
-		gx = xp.zeros(shape=(n, c_in, h_i, w_i), dtype=np.float32)
+		gx = xp.zeros(shape=(n, c_in, h_i, w_i), dtype=xp.float32)
 		return gx,
 
 
