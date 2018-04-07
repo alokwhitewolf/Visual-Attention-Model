@@ -9,7 +9,7 @@ from chainer import function
 
 
 class GlimpseSensor(function.Function):
-	def __init__(self, center, output_size, depth=1, scale=2):
+	def __init__(self, center, output_size, using_conv = False, depth=1, scale=2):
 		if type(output_size) is not tuple:
 			self.output_size = output_size
 		else:
@@ -18,6 +18,7 @@ class GlimpseSensor(function.Function):
 		self.center = center
 		self.depth = depth
 		self.scale = scale
+		self.using_conv = using_conv
 
 	def forward(self, images):
 		xp = cuda.get_array_module(*images)
@@ -27,7 +28,7 @@ class GlimpseSensor(function.Function):
 		size_o = self.output_size
 
 		# [-1, 1]^2 -> [0, size_i - 1]x[0, size_i - 1]
-		center = 0.5 * (self.center + 1) * (size_i - 1)  # center -> [n X 2]
+		center = 0.5 * (self.center + 1) * (size_i - 1)  # center:shape -> [n X 2]
 
 		y = xp.zeros(shape=(n, c*self.depth, size_o, size_o), dtype=np.float32)
 
@@ -48,16 +49,21 @@ class GlimpseSensor(function.Function):
 				resized = resize(cropped, (self.output_size, self.output_size))
 				y[i][c*j: (c*j)+c] = resized
 
-		return y,
+		if self.using_conv:
+			return y,
+		else:
+			return y.reshape(n,-1),
 
 	def backward(self, images, gy):
 		#return zero grad
 		xp = cuda.get_array_module(*images)
-		n, c_out = gy[0].shape[:2]
-		c_in ,h_i, w_i = images[0].shape[1:4]
+		n, c_in ,h_i, w_i = images[0].shape
 		gx = xp.zeros(shape=(n, c_in, h_i, w_i), dtype=np.float32)
 		return gx,
 
+
 def getGlimpses(x, center, size, depth=1, scale=2):
 	return GlimpseSensor(center, size, depth, scale)(x)
+
+
 
