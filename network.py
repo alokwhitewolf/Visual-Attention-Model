@@ -100,6 +100,7 @@ class RAM(chainer.Chain):
         l = chainer.Variable(self.xp.asarray(l))
 
         sum_ln_pi = Variable(self.xp.zeros(batchsize))
+        sum_ln_pi = F.cast(sum_ln_pi,'float32')
         l, ln_pi, y, b = self.forward(x, l, first=True)
         for i in range(1,self.n_steps):
             l, ln_pi, y, b = self.forward(x, l)
@@ -112,14 +113,15 @@ class RAM(chainer.Chain):
         if train:
             # reward
             conditions = self.xp.argmax(y.data, axis=1) == t.data
-            r = self.xp.where(conditions, 1., 0.).astype(np.float32)
-
+            r = self.xp.where(conditions, 1., 0.).astype(self.xp.float32)
+            r = self.xp.expand_dims(r, 1)
             # squared error between reward and baseline
             self.loss_baseline = F.mean_squared_error(r, b)
             self.loss += self.loss_baseline
-
             # loss with reinforce rule
             mean_ln_pi = sum_ln_pi / (self.n_steps - 1)
+            mean_ln_pi = self.xp.expand_dims(mean_ln_pi, 1)
+
             self.reinforce_loss = F.sum(-mean_ln_pi * (r - b)) / batchsize
             self.loss += self.reinforce_loss
 
@@ -140,7 +142,7 @@ if __name__ == "__main__":
 
 
     model = RAM()
+    model.to_gpu()
     model(x, t)
-
 
 
