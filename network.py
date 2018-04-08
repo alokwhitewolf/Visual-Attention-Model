@@ -116,9 +116,10 @@ class RAM(chainer.Chain):
             self.reinforce_loss = F.sum(-mean_ln_pi * (r-b)) / batchsize
             self.loss += self.reinforce_loss
             reporter.report({'cross_entropy_loss': self.loss_action}, self)
-            reporter.report({'reinforce_loss': self.reinforce_loss}, self)
-            reporter.report({'total_loss': self.loss}, self)
+            #reporter.report({'reinforce_loss': self.reinforce_loss}, self)
+            #reporter.report({'total_loss': self.loss}, self)
             reporter.report({'training_accuracy': self.accuracy}, self)
+
         #print(self.loss)
         return self.loss
 

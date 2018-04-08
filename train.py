@@ -28,9 +28,9 @@ if __name__ == '__main__':
                         help='Dimension of output')
     parser.add_argument('--len_seq', '-l', type=int, default=6,
                         help='Length of action sequence')
-    parser.add_argument('--depth', '-d', type=int, default=6,
+    parser.add_argument('--depth', '-d', type=int, default=1,
                         help='no of depths/glimpses to be taken at once')
-    parser.add_argument('--scale', '-s', type=float, default=0.3,
+    parser.add_argument('--scale', '-s', type=float, default=2,
                         help='subsequent scales of cropped image for sequential depths (int>1)')
     parser.add_argument('--sigma', '-si',type=float, default=0.03,
                         help='sigma of location sampling model')
@@ -83,11 +83,11 @@ if __name__ == '__main__':
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, stop_trigger, out=args.out)
     trainer.extend(lr_drop)
-    trainer.extend(extensions.snapshot_object(model, 'model{.updater.epoch}.npz'), trigger=(10,'epoch'))
-    trainer.extend(extensions.snapshot_object(optimizer, '{optimizer.updater.epoch}.npz'), trigger=(10, 'epoch'))
-    extensions.PlotReport(['training_accuracy'], 'epoch', trigger=(1, 'epoch'), file_name='train_accuracy.png',
-                          marker=".")
-    extensions.PlotReport(['cross_entropy_loss'], 'epoch', trigger=(1, 'epoch'), file_name='train_accuracy.png',
-                          marker=".")
-    trainer.extend(extensions.ProgressBar((args.epoch,'epoch'),update_interval=5))
+    trainer.extend(extensions.snapshot_object(model, '2model{.updater.epoch}.npz'), trigger=(50,'epoch'))
+    trainer.extend(extensions.snapshot_object(optimizer, '2opt{.updater.epoch}.npz'), trigger=(50, 'epoch'))
+    trainer.extend(extensions.PlotReport(['main/training_accuracy'], 'epoch', trigger=(1, 'epoch'), file_name='2train_accuracy.png',
+                          marker="."))
+    trainer.extend(extensions.PlotReport(['main/cross_entropy_loss'], 'epoch', trigger=(1, 'epoch'), file_name='2cross_entropy.png',
+                          marker="."))
+    trainer.extend(extensions.ProgressBar((args.epoch,'epoch'),update_interval=50))
     trainer.run()
