@@ -19,6 +19,7 @@ computational demands scale linearly with the number of image pixels.
 
 <figure><img src='media/model.png'><figcaption>Network Architecture image from Sunner Li's <a href='https://medium.com/@sunnerli/visual-attention-in-deep-learning-77653f611855'>Blogpost<a></figcaption></figure>
 <br><b>Glimpse Sensor</b>
+<img src="https://raw.githubusercontent.com/alokwhitewolf/Visual-Attention-Model/master/media/glimpsesensor.png?token=AXX99gNEkCWKge4BTWwr6pH6dtqbXgPBks5a0uKywA%3D%3D"></img>
 
 <br>
 Glimpse Sensor is the implementation of RetinaThe idea is to allow our network to “take a glance” at the image around a given location, called a glimpse, then extract and resize this glimpse into various scales of image
@@ -28,6 +29,8 @@ around the given location.
 <br><br>
 <b>Glimpse Network</b>
 
+
+<img src="https://raw.githubusercontent.com/alokwhitewolf/Visual-Attention-Model/master/media/glimpsenetwork.png?token=AXX99gO_-w9nNbutxghSOO7Kz2c6ME-zks5a0uJQwA%3D%3D"></img>
 
 Once we have defined glimpse sensor, Glimpse Network is simply a wrapped around Glimpse Sensor, to take a full-sized image and a location, extract a retina representation of the image via Glimpse Sensor, flatten, then combine the
 extracted retina representation with the glimpse location using hidden layers and ReLU, emitting a single vector g. This vector contains the information of both “what” (our retina representation) and “where” (the focused location within the image).
@@ -42,3 +45,13 @@ Activation Network takes hidden states from Recurrent Network as input, and trie
 <br><br><b>Architecture Combined</b></br>
 Combining all the element illustrated above, we have our network architecture below.
 ![Image](media/combined.png)
+
+## Experiments
+- [x] MNIST
+![Image](media/2cross_entropy.png)
+- [ ] Translated MNIST
+- [ ] Cluttered MNIST
+- [ ] SVHN
+
+## Credits
+Some of the texts and images have been medium posts by <a href="https://towardsdatascience.com/visual-attention-model-in-deep-learning-708813c2912c">Tristan</a> and <a href="https://medium.com/@sunnerli/visual-attention-in-deep-learning-77653f611855">Sunner Li</a>
